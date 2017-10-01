@@ -12,7 +12,6 @@ data = np.loadtxt(filename, delimiter=',', skiprows=1)
 # Split into columns
 index, time, range_, velocity_command, raw_ir1, raw_ir2, raw_ir3, raw_ir4, sonar1, sonar2 = data.T
 
-
 # Plot true range and sonar measurements over time
 plt.figure(figsize=(12, 4))
 
@@ -80,7 +79,6 @@ plt.show()
 # You might find these helpful if you want to implement a particle filter
 
 import bisect
-
 
 def resample(particles, weights):
     """Resample particles in proportion to their weights.

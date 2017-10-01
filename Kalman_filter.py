@@ -32,55 +32,92 @@ class KalmanFilter(object):
         return self.x_post
 
 def main():
-    filename = 'training2.csv'
+    filename = 'training1.csv'
     data = np.loadtxt(filename, delimiter=',', skiprows=1)
     index, time, range_, velocity_command, raw_ir1, raw_ir2, raw_ir3, raw_ir4, sonar1, sonar2 = data.T
     dt = time[1] - time[0]
-    var_w = 0.00001
+    var_w = 9.3e-6
     sonar1_coeff = [0.002977, 2.25556149]
+    ir3_coeff = [0.24727172, 0.22461734, -0.01960771]
+    ir4_coeff = [1.21541481, 1.54949467, -0.00284672]
     sonar2_cutoff = 0.6
+    ir3_cutoff = 0.11
+    ir4_cutoff = 1.5
     filtered_output = []
+    ir3_linearised = []
+    ir4_linearised = []
 
     k = KalmanFilter(var_w, dt)
 
-    for i, (data1, data2, control) in enumerate(zip(sonar1, sonar2, velocity_command)):
-        if len(filtered_output) > 0:
+    for i, (data1, data2, data3, data4, control) in enumerate(zip(sonar1, sonar2, raw_ir3, raw_ir4, velocity_command)):
+        if i > 0:
             pos = filtered_output[i-1]
+            prev_V = raw_ir3[i-1]
         else:
             pos = 0
+            prev_V3 = data3
+            prev_V4 = data4
         var_data1 = sonar1_coeff[0] * np.exp(sonar1_coeff[1]*pos)
         var_data2 = 2**64 if pos < sonar2_cutoff else 0.015
+        var_data3 = 2**64 if pos > ir3_cutoff else 0.501
+        var_data4 = 2**64 if pos < ir4_cutoff else 1.97
+        data3 = get_ir_linearised(data3, prev_V3, ir3_coeff)
+        data4 = get_ir_linearised(data4, prev_V4, ir4_coeff)
+        ir3_linearised.append(data3)
+        ir4_linearised.append(data4)
+        data_vec = [data1, data2, data3, data4]
+        var_vec = [var_data1, var_data2, var_data3, var_data4]
 
-        data, var_v = fuse_sensors(data1, data2, var_data1, var_data2)
+        data, var_v = fuse_sensors(data_vec, var_vec)
         k.predict_and_correct(data, control, var_v)
         filtered_output.append(k.get_estimate())
 
     # -------- Plotting ----------
     fig = plt.figure()
-    ax1 = fig.add_subplot(222)
+    ax1 = fig.add_subplot(232)
     ax1.plot(time, sonar1)
     ax1.set_title("Sonar sensor 1")
 
-    ax2 = fig.add_subplot(224)
+    ax2 = fig.add_subplot(233)
     ax2.plot(time, sonar2)
     ax2.set_title("Sonar sensor 2")
 
-    ax3 = fig.add_subplot(121)
-    ax3.plot(time, range_, linewidth=1.0, label="True position")
-    ax3.scatter(time, filtered_output, s=3, color="b", label="Filtered output")
-    ax3.set_title("Position estimate")
-    ax3.legend()
+    ax3 = fig.add_subplot(235)
+    ax3.plot(time, ir3_linearised)
+    ax3.set_title("IR sensor 3 - linearised")
+
+    ax4 = fig.add_subplot(236)
+    ax4.plot(time, ir4_linearised)
+    ax4.set_title("IR sensor 4 - linearised")
+
+    #print("Total error = {} for {} process noise".format(error, var_w))
+    ax5 = fig.add_subplot(131)
+    ax5.plot(time, range_, linewidth=1.0, label="True position")
+    ax5.scatter(time, filtered_output, s=3, color="b", label="Filtered output")
+    ax5.set_title("Position estimate")
+    ax5.legend()
 
     plt.tight_layout()
     plt.show()
 
-def fuse_sensors(data1, data2, var1, var2):
+def fuse_sensors(data_vec, var_vec):
     '''
     Fuse sensor data for kalman filter
     '''
-    data = ((1/var1) * data1 + (1/var2) * data2) / (1/var1 + 1/var2)
-    var_v = (var1 * var2) / (var1 + var2)
+    num = 0 
+    denom = 0 
+    for data,var in zip(data_vec,var_vec):
+        num += (1/var)*data
+        denom += 1/var
+    var_v = 1/denom
+    data = num/denom
     return data, var_v
+
+def get_ir_linearised(data3, prev_V, coeff):
+    a, b, c = coeff
+    linearised = b/(prev_V - a) - c - b/(prev_V - a)**2 * (data3 - prev_V)
+    nonlin = b / (data3-a) - c
+    return linearised
 
 if __name__ == "__main__":
     main()
