@@ -126,3 +126,6 @@ plt.plot(range_ir4, true_ir4)
 plt.plot(range_ir4, range_ir4)
 
 plt.show()
+
+print(xopt_1)
+print(xopt_2)

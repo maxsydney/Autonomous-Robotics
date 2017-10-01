@@ -1,6 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 from matplotlib import style
+from collections import namedtuple
 style.use('ggplot')
 
 class KalmanFilter(object):
@@ -38,8 +39,7 @@ def main():
     dt = time[1] - time[0]
     var_w = 9.3e-6
     sonar1_coeff = [0.002977, 2.25556149]
-    ir3_coeff = [0.24727172, 0.22461734, -0.01960771]
-    ir4_coeff = [1.21541481, 1.54949467, -0.00284672]
+    ir_coeffs = load_IR_sensor_models()
     sonar2_cutoff = 0.6
     ir3_cutoff = 0.11
     ir4_cutoff = 1.5
@@ -61,8 +61,8 @@ def main():
         var_data2 = 2**64 if pos < sonar2_cutoff else 0.015
         var_data3 = 2**64 if pos > ir3_cutoff else 0.501
         var_data4 = 2**64 if pos < ir4_cutoff else 1.97
-        data3 = get_ir_linearised(data3, prev_V3, ir3_coeff)
-        data4 = get_ir_linearised(data4, prev_V4, ir4_coeff)
+        data3 = get_ir_linearised(data3, prev_V3, ir_coeffs["ir3"])
+        data4 = get_ir_linearised(data4, prev_V4, ir_coeffs["ir4"])
         ir3_linearised.append(data3)
         ir4_linearised.append(data4)
         data_vec = [data1, data2, data3, data4]
@@ -104,20 +104,32 @@ def fuse_sensors(data_vec, var_vec):
     '''
     Fuse sensor data for kalman filter
     '''
-    num = 0 
-    denom = 0 
+    num = denom = 0 
     for data,var in zip(data_vec,var_vec):
-        num += (1/var)*data
-        denom += 1/var
-    var_v = 1/denom
-    data = num/denom
+        num += (1 / var) * data
+        denom += 1 / var
+    data = num / denom
+    var_v = 1 / denom
     return data, var_v
 
 def get_ir_linearised(data3, prev_V, coeff):
+    '''
+    Linearise infrared sensor function about previous datapoint
+    '''
     a, b, c = coeff
-    linearised = b/(prev_V - a) - c - b/(prev_V - a)**2 * (data3 - prev_V)
+    linearised = (b/(prev_V - a) - c) - b/(prev_V - a)**2 * (data3 - prev_V)
     nonlin = b / (data3-a) - c
     return linearised
+
+def load_IR_sensor_models():
+    '''
+    Returns the coefficients that define the infrared sensor models
+    '''
+    coeffs = {"ir1": [0.10171772, 0.0895424, -0.07046522],
+              "ir2": [-0.27042247, 0.27470697, 0.04806651],
+              "ir3": [0.24727172, 0.22461734, -0.01960771],
+              "ir4": [1.21541481, 1.54949467, -0.00284672]}
+    return coeffs
 
 if __name__ == "__main__":
     main()
