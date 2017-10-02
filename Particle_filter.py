@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import style
 import scipy.signal
-from BayesFilters import KalmanFilter, ParticleFilter
+from BayesFilters import ParticleFilter
 style.use('ggplot')
 
 def main():
@@ -12,7 +12,6 @@ def main():
     sensorData = np.array(sensorData).T     # Transpose 
     dt = time[1] - time[0]
     var_w = 9.3e-6
-    var_w_P = 1
 
     # Coefficients for linearised infrared sensor models
     ir_coeffs = load_IR_sensor_models()
@@ -25,7 +24,6 @@ def main():
     error = 0
 
     k = KalmanFilter(var_w, dt)
-    p = ParticleFilter(var_w_P, dt, 3, 1000)
 
     for i, (control, *ir_voltages, sonar1, sonar2) in enumerate(sensorData):
         if i == 0:
@@ -41,7 +39,6 @@ def main():
         data, var_v = fuse_sensors(data_vec, var_vec)
         data_output.append(data)
         k.predict_and_correct(data, control, var_v)
-        p.predict_and_correct(data, control)
         pos = k.get_estimate()
         filtered_output.append(pos)
 
@@ -81,7 +78,6 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    error /= len(time)
     print("Error = {:.4f}".format(error))
 
 def fuse_sensors(data_vec, var_vec):
