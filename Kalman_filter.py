@@ -6,27 +6,28 @@ from BayesFilters import KalmanFilter, ParticleFilter
 style.use('ggplot')
 
 def main():
-    filename = 'calibration.csv'
+    filename = 'training2.csv'
     data = np.loadtxt(filename, delimiter=',', skiprows=1)
     index, time, range_, *sensorData = data.T
     sensorData = np.array(sensorData).T     # Transpose 
     dt = time[1] - time[0]
     var_w = 9.3e-6
-    var_w_P = 1
+    var_w_P = 0.1
 
     # Coefficients for linearised infrared sensor models
     ir_coeffs = load_IR_sensor_models()
 
-    filtered_output = []
-    particle_filter_output = []
+    kalman_filtered_output = []
+    particle_filtered_output = []
     ir3_linearised = []
     ir4_linearised = []
     data_output = []
 
-    error = 0
+    kalman_error = 0
+    particle_error = 0
 
     k = KalmanFilter(var_w, dt)
-    p = ParticleFilter(var_w_P, dt, 3, 1000)
+    p = ParticleFilter(var_w_P, dt, 3, 5000)
 
     for i, (control, *ir_voltages, sonar1, sonar2) in enumerate(sensorData):
         if i == 0:
@@ -38,22 +39,29 @@ def main():
         ir4_linearised.append(ir4)
         data_vec = [sonar1, sonar2, ir1, ir2, ir3, ir4]
         var_vec = get_sensor_variance(pos)
-
         data, var_v = fuse_sensors(data_vec, var_vec)
         data_output.append(data)
         k.predict_and_correct(data, control, var_v)
         p.predict_and_correct(data, control, var_v)
-        pos = p.get_estimate()
-        filtered_output.append(pos)
-        error += (range_[i] - pos)**2
+        kalman_pos = k.get_estimate()
+        particle_pos = p.get_estimate()
+        kalman_filtered_output.append(kalman_pos)
+        particle_filtered_output.append(particle_pos)
+        kalman_error += (range_[i] - kalman_pos)**2
+        particle_error += (range_[i] - particle_pos)**2
         prev_V = ir_voltages 
+        pos = kalman_pos
+
+    kalman_error /= len(time)
+    particle_error /= len(time)
+    #print("Total resamples: {}".format(p.n_resamples))
+    #print("Error = {:.4f}".format(error), flush=True)
 
     # -------- Plotting ----------
     # fig = plt.figure()
     # ax1 = fig.add_subplot(221)
     # ax1.plot(time, sensorData[:,5])
     # ax1.set_title("Sonar sensor 1")
-
     # ax2 = fig.add_subplot(222)
     # ax2.plot(time, sensorData[:,6])
     # ax2.set_title("Sonar sensor 2")
@@ -67,10 +75,13 @@ def main():
     # ax4.set_title("IR sensor 4 - linearised")
 
     plt.figure()
-    plt.plot(time, range_, linewidth=1.0, label="True position")
-    plt.scatter(time, filtered_output, s=3, color="b", label="Kalman filter output")
-    plt.title("Position estimate")
-    plt.legend()
+    plt.plot(time, range_, linewidth=2.0, label="True position")
+    plt.plot(time, kalman_filtered_output, color='g', label="Kalman filter output - Error = {:.3f}%".format(kalman_error*100))
+    plt.plot(time, particle_filtered_output, color='b', alpha=0.7, label="Particle filter output - Error = {:.3f}%".format(particle_error*100))
+    plt.title("Bayes Filter Performance")
+    plt.ylabel("Position (m)")
+    plt.xlabel("Time (s)")
+    plt.legend(loc=2)
 
     plt.figure()
     plt.plot(time, range_)
@@ -78,9 +89,6 @@ def main():
 
     plt.tight_layout()
     plt.show()
-
-    error /= len(time)
-    print("Error = {:.4f}".format(error))
 
 def fuse_sensors(data_vec, var_vec):
     '''

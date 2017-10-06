@@ -33,8 +33,9 @@ class ParticleFilter(object):
         self.dt = dt
         self.n_particles = n_particles
         self.range = range_
-        self.posterior = 0
-        self.create_particles()
+        self.posterior = 0.1
+        self.create_particles(init=0)
+        self.n_resamples = 0
 
     def create_particles(self, init=0):
         """Creates initial particle and weight vectors"""
@@ -47,19 +48,21 @@ class ParticleFilter(object):
     def predict_and_correct(self, data, control, var_v):
         """Execute one iteration of the particle filter"""
         # Predict step
-        self.particles += control * self.dt + np.random.randn(self.n_particles) * self.var_W
+        self.particles += control * self.dt + np.random.randn(self.n_particles)*self.var_W
 
         # Correct step
         self.update_weights(data, var_v)
         if self.is_degenerate():
             self.resample()
+            self.n_resamples += 1
         
         # Compute state estimate
         self.posterior = np.average(self.particles, weights=self.weights)
 
     def update_weights(self, data, var_v):
         """Update weights based on a gaussian distribution"""
-        self.weights *= scipy.stats.norm(data, 1).pdf(self.particles)
+        var_gain = 250  # Amplify variance to avoid killing off too many particles
+        self.weights *= scipy.stats.norm(data, var_v * var_gain).pdf(self.particles)
         self.weights += 1.e-300
         self.weights /= sum(self.weights)
     
