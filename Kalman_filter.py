@@ -6,7 +6,7 @@ from BayesFilters import KalmanFilter, ParticleFilter
 style.use('ggplot')
 
 def main():
-    filename = 'training2.csv'
+    filename = 'calibration.csv'
     data = np.loadtxt(filename, delimiter=',', skiprows=1)
     index, time, range_, *sensorData = data.T
     sensorData = np.array(sensorData).T     # Transpose 
@@ -18,6 +18,7 @@ def main():
     ir_coeffs = load_IR_sensor_models()
 
     filtered_output = []
+    particle_filter_output = []
     ir3_linearised = []
     ir4_linearised = []
     data_output = []
@@ -41,36 +42,33 @@ def main():
         data, var_v = fuse_sensors(data_vec, var_vec)
         data_output.append(data)
         k.predict_and_correct(data, control, var_v)
-        p.predict_and_correct(data, control)
-        pos = k.get_estimate()
+        p.predict_and_correct(data, control, var_v)
+        pos = p.get_estimate()
         filtered_output.append(pos)
-
+        error += (range_[i] - pos)**2
         prev_V = ir_voltages 
 
-        error += (range_[i] - pos)**2
-   
     # -------- Plotting ----------
-    fig = plt.figure()
-    ax1 = fig.add_subplot(221)
-    ax1.plot(time, sensorData[:,5])
-    ax1.set_title("Sonar sensor 1")
+    # fig = plt.figure()
+    # ax1 = fig.add_subplot(221)
+    # ax1.plot(time, sensorData[:,5])
+    # ax1.set_title("Sonar sensor 1")
 
-    ax2 = fig.add_subplot(222)
-    ax2.plot(time, sensorData[:,6])
-    ax2.set_title("Sonar sensor 2")
+    # ax2 = fig.add_subplot(222)
+    # ax2.plot(time, sensorData[:,6])
+    # ax2.set_title("Sonar sensor 2")
 
-    ax3 = fig.add_subplot(223)
-    ax3.plot(time, ir3_linearised)
-    ax3.set_title("IR sensor 3 - linearised")
+    # ax3 = fig.add_subplot(223)
+    # ax3.plot(time, ir3_linearised)
+    # ax3.set_title("IR sensor 3 - linearised")
 
-    ax4 = fig.add_subplot(224)
-    ax4.plot(time, ir4_linearised)
-    ax4.set_title("IR sensor 4 - linearised")
+    # ax4 = fig.add_subplot(224)
+    # ax4.plot(time, ir4_linearised)
+    # ax4.set_title("IR sensor 4 - linearised")
 
-    #print("Total error = {} for {} process noise".format(error, var_w))
     plt.figure()
     plt.plot(time, range_, linewidth=1.0, label="True position")
-    plt.scatter(time, filtered_output, s=3, color="b", label="Filtered output")
+    plt.scatter(time, filtered_output, s=3, color="b", label="Kalman filter output")
     plt.title("Position estimate")
     plt.legend()
 

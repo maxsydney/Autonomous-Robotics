@@ -1,4 +1,5 @@
-import numpy as np 
+import numpy as np
+import scipy.stats
 import bisect
 
 class KalmanFilter(object):
@@ -35,28 +36,31 @@ class ParticleFilter(object):
         self.posterior = 0
         self.create_particles()
 
-    def create_particles(self):
+    def create_particles(self, init=0):
         """Creates initial particle and weight vectors"""
-        self.particles = np.random.uniform(0, self.range, self.n_particles)
+        if init:
+            self.particles = np.random.randn(self.n_particles) + self.posterior
+        else:
+            self.particles = np.random.uniform(0, self.range, self.n_particles)
         self.weights = np.ones(self.n_particles) * 1/self.n_particles
     
-    def predict_and_correct(self, data, control):
+    def predict_and_correct(self, data, control, var_v):
         """Execute one iteration of the particle filter"""
         # Predict step
         self.particles += control * self.dt + np.random.randn(self.n_particles) * self.var_W
 
         # Correct step
-        self.update_weights(data)
+        self.update_weights(data, var_v)
         if self.is_degenerate():
             self.resample()
         
         # Compute state estimate
         self.posterior = np.average(self.particles, weights=self.weights)
 
-    def update_weights(self, data):
-        """Update weights based on a linear function of their proximity to sensor reading"""
-        distance = self.particles - data
-        self.weights = 1 / distance
+    def update_weights(self, data, var_v):
+        """Update weights based on a gaussian distribution"""
+        self.weights *= scipy.stats.norm(data, 1).pdf(self.particles)
+        self.weights += 1.e-300
         self.weights /= sum(self.weights)
     
     def get_estimate(self):
@@ -83,7 +87,7 @@ class ParticleFilter(object):
             self.particles[m] = p
 
         # Reset weights
-        self.weights[:] = 1
+        self.weights[:] = 1 / self.n_particles
 
     def is_degenerate(self):
         """Return true if the particles are degenerate and need resampling."""
