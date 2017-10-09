@@ -3,6 +3,8 @@ import scipy.stats
 import bisect
 
 class KalmanFilter(object):
+    """ Simple implementation for a one dimensional Kalman filter with additive noise
+    sensor and motion models """
 
     def __init__(self, var_w, dt):
         self.var_w = var_w
@@ -27,6 +29,8 @@ class KalmanFilter(object):
         return self.x_post
 
 class ParticleFilter(object):
+    """ Simple implementation for a one dimensional particle filter with additive noise
+    sensor and motion models """
     
     def __init__(self, var_W, dt, range_, n_particles):
         self.var_W = var_W
@@ -96,3 +100,14 @@ class ParticleFilter(object):
         """Return true if the particles are degenerate and need resampling."""
         w = self.weights/np.sum(self.weights)
         return 1/np.sum(w**2) < 0.5*len(w)
+
+class Particle(object):
+    """Class describing a particle for the particle filter"""
+    def __init__(self, pose, weight):
+        self.pose = pose
+        self.weight = weight
+
+class ParticleFilter_2D(ParticleFilter):
+    """ Extension of the particle filter for localization of a wheeled robot using
+    stochastic/odometry motion models """
+    pass
