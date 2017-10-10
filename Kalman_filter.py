@@ -145,7 +145,7 @@ def get_sensor_variance(pos):
 
     var_sonar1 = sonar1_coeff[0] * np.exp(sonar1_coeff[1]*pos)
     var_sonar2 = 2**64 if pos < sonar2_cutoff else 0.015
-    var_ir1 = 2**64 if pos < ir1_cutoff[0] or pos > ir1_cutoff[1] else 0.219
+    var_ir1 = 2**64 if pos < ir1_cutoff[0] or pos > ir1_cutoff[1] else 0.002
     var_ir2 = 2**64 if pos < ir2_cutoff[0] or pos > ir2_cutoff[1] else 0.00103
     var_ir3 = 2**64 if pos > ir3_cutoff else ir3_error_model
     var_ir4 = 2**64 if pos < ir4_cutoff else ir4_error_model

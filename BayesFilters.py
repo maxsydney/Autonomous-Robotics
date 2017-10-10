@@ -126,5 +126,5 @@ class ParticleFilter_2D(ParticleFilter):
             self.particles.append(Particle(x, y, theta, 1/self.n_particles))
 
     def motion_model(self, control):
-        
+        pass
     
