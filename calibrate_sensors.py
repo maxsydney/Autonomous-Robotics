@@ -31,6 +31,11 @@ print(coeff)
 x = np.linspace(0, 3, num=50)
 y = np.exp(coeff[1]) * np.exp(coeff[0]*x) 
 
+# Fit step function to sensor2 data
+x2 = np.linspace(0, 3, num=500)
+y2 = np.ones(len(x2)) * var2[-1]
+y2[:33] = var2[0]
+
 plt.figure()
 plt.subplot(1,2,1)
 plt.plot(range_, sensor_1_error, '.')
@@ -40,12 +45,20 @@ plt.plot(range_, sensor_2_error, '.')
 plt.title("Sensor 2 error")
 
 plt.figure()
-plt.plot(d, var1, '.', label='Measured data')
+plt.subplot(121)
+plt.plot(d, var1, '.', markersize=8, label='Measured data')
 plt.plot(x, y, label='Fitted model')
-plt.title("Sensor 1 error model")
+#plt.title("Sonar 1 error model")
+plt.ylabel('Variance')
+plt.xlabel("Sensor reading (m)")
 plt.legend()
 
-plt.figure()
-plt.plot(d, var2, '.', label='Measured data')
-plt.title("Sensor 2 error model")
+plt.subplot(122)
+plt.plot(d, var2, '.', markersize=8, label='Measured data')
+plt.plot(x2, y2, label="Fitted model")
+#plt.title("Sonar 2 error model")
+plt.ylabel('Variance')
+plt.xlabel("Sensor reading (m)")
+plt.legend()
 plt.show()
+

@@ -48,11 +48,14 @@ class ParticleFilter(object):
         else:
             self.particles = np.random.uniform(0, self.range, self.n_particles)
         self.weights = np.ones(self.n_particles) * 1/self.n_particles
+
+    def motion_model(self, control):
+        return control * self.dt + np.random.randn(self.n_particles)*self.var_W
     
     def predict_and_correct(self, data, control, var_v):
         """Execute one iteration of the particle filter"""
         # Predict step
-        self.particles += control * self.dt + np.random.randn(self.n_particles)*self.var_W
+        self.particles += self.motion_model(control)
 
         # Correct step
         self.update_weights(data, var_v)
@@ -103,11 +106,25 @@ class ParticleFilter(object):
 
 class Particle(object):
     """Class describing a particle for the particle filter"""
-    def __init__(self, pose, weight):
-        self.pose = pose
+
+    def __init__(self, x, y, theta, weight):
+        self.x = x
+        self.y = y
+        self.theta = theta
         self.weight = weight
 
 class ParticleFilter_2D(ParticleFilter):
     """ Extension of the particle filter for localization of a wheeled robot using
     stochastic/odometry motion models """
-    pass
+    
+    def create_particles(self, init=0):
+        self.particles = []
+        for _ in self.n_particles:
+            x = np.random.uniform(0, self.range_[0])
+            y = np.random.uniform(0, self.range_[1])
+            theta = np.random.uniform(0, 2*np.pi)
+            self.particles.append(Particle(x, y, theta, 1/self.n_particles))
+
+    def motion_model(self, control):
+        
+    
